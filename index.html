@@ -3,37 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#162033">
+  <meta name="theme-color" content="#07111f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GO13">
   <link rel="manifest" href="manifest.json">
-  <title>GO13</title>
-  <style>
-    :root{--navy:#172033;--muted:#6c7484;--line:#e6e9ef;--blue:#2f66e8;--green:#16a06a;--bg:#f4f6f9;--card:#fff}
-    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#172033} button{font:inherit}
-    .top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:18px 18px 16px;box-shadow:0 2px 12px #0002}
-    .title-row{display:flex;gap:12px;align-items:center}.home{width:48px;height:48px;border:0;border-radius:16px;background:#fff1;color:#fff;font-size:24px;display:grid;place-items:center}
-    h1{font-size:27px;line-height:1.05;margin:0;font-weight:800}.sub{opacity:.76;font-size:15px;margin-top:8px}
-    .toolbar{display:flex;gap:8px;overflow:auto;padding:10px 2px 0}.day-btn{border:1px solid #ffffff2a;background:#fff12;color:#fff;border-radius:12px;padding:8px 12px;white-space:nowrap;font-weight:700}.day-btn.active{background:#fff;color:var(--navy)}
-    main{max-width:880px;margin:0 auto;padding:14px 12px 40px}.day-card{background:var(--card);border-radius:22px;overflow:hidden;box-shadow:0 8px 30px #0000000d}.day-head{padding:20px 18px 14px;border-bottom:1px solid var(--line)}
-    .date{color:var(--blue);font-size:14px;font-weight:800}.day-title{font-size:28px;font-weight:800;margin:4px 0}.summary{color:#5f6775;line-height:1.45}
-    .day-actions{display:flex;gap:9px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}.action{border:1px solid #dfe5ee;background:#fff;border-radius:12px;padding:9px 13px;font-weight:800;color:#1c2b42}.action.primary{background:#2d66e8;color:#fff;border-color:#2d66e8}
-    .event{padding:18px;border-bottom:1px solid var(--line)}.event:last-child{border-bottom:0}.event-row{display:grid;grid-template-columns:1fr 72px;gap:12px;align-items:start}.time{font-size:18px;font-weight:800;text-align:right}.event-title{font-size:22px;font-weight:800;line-height:1.18}.meta{font-size:15px;color:#667080;margin-top:7px;line-height:1.45}.meta b{color:#333e4f}
-    .status{display:inline-block;margin-top:8px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:900;background:#eef3fa;color:#48607f}.status.confirmed,.status.booked{background:#e7f7ef;color:#138459}.status.optional,.status.recommended{background:#fff5db;color:#9b6b00}.status.caution,.status.pending{background:#fff0ed;color:#b44735}
-    .event-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.mini{border:1px solid #d9e0e9;background:#fff;border-radius:11px;padding:8px 10px;font-weight:800;color:#28405c}.mini.map{background:#edf4ff;color:#245ed9}.mini.copy{background:#ecfbf5;color:#137d58}
-    .footer{padding:20px 0;text-align:center;color:#7a8390;font-size:12px}
-    @media(min-width:700px){main{padding-top:24px}.event{padding:22px}.event-title{font-size:24px}}
-  </style>
+  <link rel="icon" href="icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.svg">
+  <link rel="stylesheet" href="styles.css">
+  <title>GO13 · GO-USA</title>
 </head>
 <body>
-<header class="top">
-  <div class="title-row"><button class="home" id="homeBtn" aria-label="בית">⌂</button><div><h1>GO13</h1><div class="sub">NYC → Las Vegas → Grand Canyon · אבא + עומר</div></div></div>
-  <div class="toolbar" id="days"></div>
-</header>
-<main id="app"></main>
-<div class="footer">GO13 · 2026</div>
-<script src="app-data.js"></script>
-<script src="app.js"></script>
+  <header class="app-header">
+    <div class="brand"><img src="icon-192.svg" alt="GO13"><div><strong>GO13</strong><span>GO-USA</span></div></div>
+    <div class="header-actions">
+      <button id="homeBtn" class="icon-btn" aria-label="פתח אפשרויות iPhone">⌂</button>
+      <button id="specialJump" class="icon-btn" aria-label="תצוגה מיוחדת">✦</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="day-shell" id="dayShell">
+      <div class="day-picker" id="dayPicker"></div>
+      <div id="dayView"></div>
+    </section>
+
+    <section class="secondary-tabs-wrap" id="secondarySection">
+      <nav class="secondary-tabs">
+        <button class="secondary-tab active" data-tab="bookings">הוזמן</button>
+        <button class="secondary-tab" data-tab="sites">מדריך אתרים</button>
+      </nav>
+      <div id="secondaryContent"></div>
+    </section>
+
+    <section class="special-section" id="specialSection">
+      <div class="special-heading">
+        <div><span class="eyebrow">EXTRA</span><h2>התצוגה המיוחדת</h2><p>מפת מסע ויזואלית, רגעי עוגן ותקציר של כל הדרך — לשימוש כשבאמת צריך.</p></div>
+        <button id="specialToggle" class="special-toggle">פתח תצוגה</button>
+      </div>
+      <div id="specialContent" class="special-content collapsed"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="app-data-GO13.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

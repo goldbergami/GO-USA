@@ -1,58 +1,30 @@
-(function(){
-  const data = window.APP_DATA;
-  if(!data){ document.getElementById('app').innerHTML='<div class="day-card"><div class="event">לא נטענו נתוני הטיול.</div></div>'; return; }
-  const daysEl=document.getElementById('days');
-  const app=document.getElementById('app');
-  const dates=data.dates||Object.keys(data.days||{});
-  let selected=dates[0];
-
-  function esc(v){return String(v??'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#39;'}[s]));}
-  function mapsUrl(target){return 'https://maps.apple.com/?q='+encodeURIComponent(target||'');}
-  function wazeUrl(target){return 'https://www.waze.com/ul?q='+encodeURIComponent(target||'')+'&navigate=yes';}
-  async function copyText(text){try{await navigator.clipboard.writeText(text||'');}catch(e){const ta=document.createElement('textarea');ta.value=text||'';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();} }
-
-  function renderDayButtons(){
-    daysEl.innerHTML=dates.map(d=>{const x=data.days[d];return `<button class="day-btn ${d===selected?'active':''}" data-day="${d}">${esc(d.slice(8,10))}/${esc(d.slice(5,7))}</button>`}).join('');
-    daysEl.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{selected=b.dataset.day;render();window.scrollTo({top:0,behavior:'smooth'});});
-  }
-
-  function render(){
-    renderDayButtons();
-    const day=data.days[selected];
-    app.innerHTML=`<section class="day-card">
-      <div class="day-head"><div class="date">${esc(day.day)} · ${esc(day.date)}</div><div class="day-title">${esc(day.title)}</div><div class="summary">${esc(day.summary||'')}</div></div>
-      <div class="day-actions">
-        <button class="action primary" id="dayMaps"> מפות – מסלול היום</button>
-        <button class="action" id="dayWaze">🚗 Waze – מסלול היום</button>
-      </div>
-      ${(day.events||[]).map(renderEvent).join('')}
-    </section>`;
-    document.getElementById('dayMaps').onclick=()=>openDay('maps');
-    document.getElementById('dayWaze').onclick=()=>openDay('waze');
-  }
-
-  function renderEvent(e){
-    const target=e.nav||e.toAddress||e.to||e.title;
-    const addr=e.toAddress||target;
-    const cls=(e.status||'').toLowerCase().replace(/[^a-z]+/g,'-');
-    return `<article class="event">
-      <div class="event-row"><div><div class="event-title">${esc(e.title)}</div><div class="meta">${e.transport?esc(e.transport)+' · ':''}${esc(target)}</div>${e.toAddress?`<div class="meta"><b>כתובת:</b> ${esc(e.toAddress)}</div>`:''}${e.travelTime?`<div class="meta"><b>נסיעה:</b> ${esc(e.travelTime)} · <b>שהייה:</b> ${esc(e.stay||'')}</div>`:''}<span class="status ${cls}">${esc(e.status||e.bookingStatus||'')}</span></div><div class="time">${esc(e.start)}${e.end?`<div style="font-size:12px;color:#8a93a0;font-weight:600;margin-top:2px">עד ${esc(e.end)}</div>`:''}</div></div>
-      <div class="meta" style="margin-top:12px">${esc(e.whatToDo||'')}</div>
-      ${e.next?`<div class="meta"><b>הבא:</b> ${esc(e.next)}</div>`:''}
-      <div class="event-actions"><button class="mini map" data-map="${esc(target)}">📍 מפות</button><button class="mini" data-waze="${esc(target)}">🚗 Waze</button><button class="mini copy" data-copy="${esc(addr)}">העתק כתובת</button></div>
-    </article>`;
-  }
-
-  function openDay(mode){
-    const day=data.days[selected]; const first=(day.events||[]).find(e=>e.nav||e.toAddress||e.to); const target=(first&&(first.nav||first.toAddress||first.to))||day.title;
-    window.location.href=mode==='maps'?mapsUrl(target):wazeUrl(target);
-  }
-  app.addEventListener('click',async ev=>{
-    const b=ev.target.closest('button'); if(!b)return;
-    if(b.dataset.map) window.location.href=mapsUrl(b.dataset.map);
-    if(b.dataset.waze) window.location.href=wazeUrl(b.dataset.waze);
-    if(b.dataset.copy){await copyText(b.dataset.copy);b.textContent='✓ הועתק';setTimeout(()=>b.textContent='העתק כתובת',1200);}
-  });
-  document.getElementById('homeBtn').onclick=()=>{selected=dates[0];render();window.scrollTo({top:0,behavior:'smooth'});};
-  render();
-})();
+const state={date:APP_DATA.dates[0], tab:'bookings'};
+const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[m]));
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+function statusClass(s=''){const x=s.toLowerCase();return x.includes('booked')||x.includes('confirmed')||x.includes('paid')?'booked':x.includes('pending')||x.includes('verify')||x.includes('high risk')?'pending':x.includes('caution')?'caution':''}
+function mapUrl(name){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`}
+function wazeUrl(name){return `https://waze.com/ul?q=${encodeURIComponent(name)}&navigate=yes`}
+function renderDayPicker(){const el=$('#dayPicker');el.innerHTML=APP_DATA.dates.map(d=>{const x=APP_DATA.days[d];return `<button class="day-chip ${d===state.date?'active':''}" data-date="${d}">${d.slice(8)}/${d.slice(5,7)} · ${esc(x.day)}</button>`}).join('');$$('.day-chip').forEach(b=>b.onclick=()=>{state.date=b.dataset.date;renderAll();window.scrollTo({top:0,behavior:'smooth'})})}
+function renderDay(){const day=APP_DATA.days[state.date];const events=day.events||[];const confirmed=events.filter(e=>/booked|confirmed|paid/i.test(e.status||e.bookingStatus||'')).length;$('#dayView').innerHTML=`<div class="day-hero"><div class="eyebrow">${esc(day.city||'GO-USA')}</div><h1>${esc(day.title)}</h1><p>${esc(day.summary||'')}</p><div class="summary"><div class="summary-card"><b>אירועים</b><span>${events.length}</span></div><div class="summary-card"><b>עוגנים</b><span>${events.filter(e=>e.anchor).length}</span></div><div class="summary-card"><b>מאושר / הוזמן</b><span>${confirmed}</span></div></div></div>${events.map(renderEvent).join('')}`}
+function renderEvent(e){const st=e.status||e.bookingStatus||'';const actions=[];if(e.to||e.nav){actions.push(`<a class="action primary" target="_blank" href="${mapUrl(e.toAddress||e.nav||e.to)}">מפות</a>`);actions.push(`<a class="action" target="_blank" href="${wazeUrl(e.toAddress||e.nav||e.to)}">Waze</a>`)}if(e.toAddress){actions.push(`<button class="action copy" data-copy="${esc(e.toAddress)}">העתק כתובת</button>`)}return `<article class="event"><div class="event-top"><div><div class="time">${esc(e.start)}–${esc(e.end)}</div><h3>${esc(e.title)}</h3><div class="route">${esc(e.from||'')} ${e.to?'→ '+esc(e.to):''}</div></div><span class="status ${statusClass(st)}">${esc(st)}</span></div>${e.whatToDo?`<div style="margin-top:10px;font-size:14px;line-height:1.45">${esc(e.whatToDo)}</div>`:''}<div class="details"><div class="detail"><b>נסיעה</b><span>${esc(e.travelTime||'—')}</span></div><div class="detail"><b>שהייה</b><span>${esc(e.stay||'—')}</span></div>${e.booking?`<div class="detail"><b>הזמנה</b><span>${esc(e.booking)}</span></div>`:''}<div class="detail"><b>הצעד הבא</b><span>${esc(e.next||'—')}</span></div></div><div class="event-actions">${actions.join('')}</div></article>`}
+function renderSecondary(){const c=$('#secondaryContent');if(state.tab==='bookings'){c.innerHTML=renderBookings()}else c.innerHTML=renderSites();$$('.secondary-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab))}
+function renderBookings(){const items=[
+ ['Statue City Cruises','21/9','CONFIRMED','https://www.cityexperiences.com/new-york/city-cruises/statue/','Statue City Cruises · confirmation 85639241 / 85639239'],
+ ['The Wizard of Oz at Sphere','23/9','BOOKED / PAID','https://www.ticketmaster.com/the-wizard-of-oz-at-sphere-tickets/artist/3552227','Ticketmaster · 2 tickets'],
+ ['Lake Powell Kayak','26/9','CONFIRMED / PAID','https://www.kayakpowell.com/guided-tours','Kayak Lake Powell · 09:30'],
+ ['Upper Antelope Canyon','26/9','CONFIRMED / PAID','https://www.lowerantelope.com/tours/','4x4 + Navajo guide · 16:00'],
+ ['Outpost X · Glass Cave Villa','28/9','BOOKED','https://outpost-x.com/','Check-in 15:00 · checkout 10:00'],
+ ['Mammoth Mountain Inn','30/9','BOOKED','https://www.mammothmountain.com/plan-your-trip/mammoth-hotels/mammoth-mountain-inn','Double Room'],
+ ['Coast Burbank Hotel','1–3/10','BOOKED','https://www.coasthotels.com/','Confirmation 1102922474'],
+ ['Universal Studios Hollywood','2/10','BOOKED / PAID','https://www.universalstudioshollywood.com/','Date-specific admission'],
+ ['Studio 6 Suites LAX','3–4/10','BOOKED','https://www.booking.com/','Booking.com · confirmation from user']
+];return items.map(i=>`<article class="list-card"><div class="list-row"><div><h3>${esc(i[0])}</h3><p>${esc(i[1])} · ${esc(i[2])}</p><p>${esc(i[4])}</p></div><span class="status booked">${esc(i[2])}</span></div><a class="link-btn" href="${i[3]}" target="_blank">פתח אתר ההזמנה ↗</a></article>`).join('')}
+function renderSites(){const sites=[
+ ['Statue of Liberty / Ellis Island','https://www.nps.gov/stli/','NPS — מידע רשמי'],['9/11 Memorial','https://www.911memorial.org/','אתר רשמי'],['United Nations','https://visit.un.org/','אתר המבקרים הרשמי'],['The Sphere','https://www.thespherevegas.com/','אתר רשמי'],['Grand Canyon','https://www.nps.gov/grca/','NPS — מידע רשמי'],['Lake Powell / Antelope','https://www.nps.gov/glca/','Glen Canyon National Recreation Area'],['Bryce Canyon','https://www.nps.gov/brca/','NPS — מידע רשמי'],['Zion','https://www.nps.gov/zion/','NPS — מידע רשמי'],['Yosemite','https://www.nps.gov/yose/','NPS — מידע רשמי'],['Universal Studios Hollywood','https://www.universalstudioshollywood.com/','אתר רשמי']
+];return sites.map(s=>`<article class="list-card"><h3>${esc(s[0])}</h3><p>${esc(s[2])}</p><a class="link-btn" target="_blank" href="${s[1]}">קרא מידע על האתר ↗</a></article>`).join('')}
+function renderSpecial(){const legs=[['21/9','NEW YORK','9/11 + UN'],['22/9','LAS VEGAS','Strip + Shopping'],['24–26/9','GRAND CANYON / PAGE','Kayak + Antelope'],['27–29/9','BRYCE / ZION','Parks + Outpost X'],['30/9–1/10','MAMMOTH / YOSEMITE','Tioga + Valley'],['2–4/10','LOS ANGELES / LAS','Universal + return']];$('#specialContent').innerHTML=`<div class="story-map">${legs.map(x=>`<div class="story-card"><b>${x[0]}</b><strong>${x[1]}</strong><span style="display:block;margin-top:8px;color:#b8c5d5;font-size:12px">${x[2]}</span></div>`).join('')}</div><div class="special-foot">התצוגה הזו נמצאת בסוף בכוונה — היא מיועדת לסקירה מהירה של כל המסע, לא לניהול היום.</div>`}
+function renderAll(){renderDayPicker();renderDay();renderSecondary();renderSpecial();attachCopy()}
+function attachCopy(){$$('.copy').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);toast('הכתובת הועתקה לזיכרון')}catch{toast('לא ניתן להעתיק אוטומטית')}})}
+$$('.secondary-tab').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;renderSecondary()});$('#specialJump').onclick=()=>$('#specialSection').scrollIntoView({behavior:'smooth'});$('#specialToggle').onclick=()=>{const c=$('#specialContent');c.classList.toggle('collapsed');$('#specialToggle').textContent=c.classList.contains('collapsed')?'פתח תצוגה':'סגור תצוגה'};$('#homeBtn').onclick=()=>{toast('ב-iPhone: Share → Add to Home Screen')};
+renderAll();
